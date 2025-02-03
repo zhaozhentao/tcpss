@@ -170,6 +170,10 @@ int receive_responses(int fd) {
     }
 }
 
+/*
+ * The following example program prints inode number, peer's inode number,
+ * and name of all UNIX domain sockets in the current namespace.
+ */
 int main(void) {
     int fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_SOCK_DIAG);
 
