@@ -9,6 +9,28 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 
+int print_diag(const struct inet_diag_msg *diag, unsigned int len) {
+    if (len < NLMSG_LENGTH(sizeof(*diag))) {
+        fputs("short response\n", stderr);
+        return -1;
+    }
+
+    if (diag->idiag_family != AF_INET) {
+        fprintf(stderr, "unexpected family %u\n", diag->idiag_family);
+        return -1;
+    }
+
+    const int length = 20;
+    char src[length];
+    char dst[length];
+
+    inet_ntop(AF_INET, diag->id.idiag_src, src, length);
+    inet_ntop(AF_INET, diag->id.idiag_dst, dst, length);
+
+    printf("local %s peer %s state %d\n", src, dst, diag->idiag_state);
+    return 0;
+}
+
 static int send_query(int fd) {
     struct sockaddr_nl nladdr = {
             .nl_family = AF_NETLINK
@@ -54,31 +76,6 @@ static int send_query(int fd) {
         printf("send success\n");
         return 0;
     }
-}
-
-const char *format_host(int af, const void *addr) {
-    static char buf[256];
-
-    return inet_ntop(af, addr, buf, 256);
-}
-
-int print_diag(const struct inet_diag_msg *diag, unsigned int len) {
-    if (len < NLMSG_LENGTH(sizeof(*diag))) {
-        fputs("short response\n", stderr);
-        return -1;
-    }
-
-    if (diag->idiag_family != AF_INET) {
-        fprintf(stderr, "unexpected family %u\n", diag->idiag_family);
-        return -1;
-    }
-
-    const char * local = format_host(AF_INET, diag->id.idiag_src);
-    const char * peer = format_host(AF_INET, diag->id.idiag_dst);
-
-    printf("local %s peer %s state %d\n", local, peer, diag->idiag_state);
-
-    return 0;
 }
 
 int receive_responses(int fd) {
