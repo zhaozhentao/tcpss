@@ -10,6 +10,21 @@
 #include <arpa/inet.h>
 
 int print_diag(const struct inet_diag_msg *diag, unsigned int len) {
+    static const char *const sstate_name[] = {
+            "UNKNOWN",
+            [TCP_ESTABLISHED] = "ESTAB",
+            [TCP_SYN_SENT] = "SYN-SENT",
+            [TCP_SYN_RECV] = "SYN-RECV",
+            [TCP_FIN_WAIT1] = "FIN-WAIT-1",
+            [TCP_FIN_WAIT2] = "FIN-WAIT-2",
+            [TCP_TIME_WAIT] = "TIME-WAIT",
+            [TCP_CLOSE] = "UNCONN",
+            [TCP_CLOSE_WAIT] = "CLOSE-WAIT",
+            [TCP_LAST_ACK] = "LAST-ACK",
+            [TCP_LISTEN] =    "LISTEN",
+            [TCP_CLOSING] = "CLOSING",
+    };
+
     if (len < NLMSG_LENGTH(sizeof(*diag))) {
         fputs("short response\n", stderr);
         return -1;
@@ -27,11 +42,19 @@ int print_diag(const struct inet_diag_msg *diag, unsigned int len) {
     inet_ntop(AF_INET, diag->id.idiag_src, src, length);
     inet_ntop(AF_INET, diag->id.idiag_dst, dst, length);
 
-    printf("local %s peer %s state %d\n", src, dst, diag->idiag_state);
+    printf(
+            "%s\t %s:%d\t %s:%d\n",
+            sstate_name[diag->idiag_state],
+            src,
+            diag->id.idiag_sport,
+            dst,
+            diag->id.idiag_dport
+    );
+
     return 0;
 }
 
-static int send_query(int fd) {
+int send_query(int fd) {
     struct sockaddr_nl nladdr = {
             .nl_family = AF_NETLINK
     };
@@ -72,8 +95,6 @@ static int send_query(int fd) {
             perror("sendmsg");
             return -1;
         }
-
-        printf("send success\n");
         return 0;
     }
 }
