@@ -1,11 +1,9 @@
 #include <errno.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <sys/socket.h>
 #include <linux/netlink.h>
 #include <linux/sock_diag.h>
 #include <linux/inet_diag.h>
-#include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 
@@ -42,9 +40,12 @@ int print_diag(const struct inet_diag_msg *diag, unsigned int len) {
     inet_ntop(AF_INET, diag->id.idiag_src, src, length);
     inet_ntop(AF_INET, diag->id.idiag_dst, dst, length);
 
+
     printf(
-            "%s\t %s:%d\t %s:%d\n",
+            "%s\t %d\t\t\t %d\t\t %s:%d\t %s:%d\n",
             sstate_name[diag->idiag_state],
+            diag->idiag_rqueue,
+            diag->idiag_wqueue,
             src,
             diag->id.idiag_sport,
             dst,
@@ -108,6 +109,8 @@ int receive_responses(int fd) {
             .iov_len = sizeof(buf)
     };
 
+    printf("State\t Recv-Q \t Send-Q\t Local Address:Port\t Peer Address:Port\n");
+
     for (;;) {
         struct msghdr msg = {
                 .msg_name = &nladdr,
@@ -170,10 +173,10 @@ int receive_responses(int fd) {
 }
 
 /*
- * The following example program prints inode number, peer's inode number,
- * and name of all UNIX domain sockets in the current namespace.
+ * @see https://man7.org/linux/man-pages/man7/sock_diag.7.html
  */
 int main(void) {
+    // Auto close when exit
     int fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_SOCK_DIAG);
 
     if (fd < 0) {
@@ -184,8 +187,6 @@ int main(void) {
     send_query(fd);
 
     receive_responses(fd);
-
-    close(fd);
 
     return 0;
 }
